@@ -116,26 +116,105 @@ function loadFromPath(filePath) {
   throw new Error(`Unsupported source type (use .json or .xml): ${absolute}`)
 }
 
+function isDuplicate(resource, ids, urls, titles) {
+  const url = (resource.url || "").trim().toLowerCase()
+  const title = (resource.title || "").trim().toLowerCase()
+  return (
+    ids.has(resource.id) ||
+    (title !== "" && titles.has(title)) ||
+    (url !== "" && url !== "#" && urls.has(url))
+  )
+}
+
+function remember(resource, ids, urls, titles) {
+  ids.add(resource.id)
+  const title = (resource.title || "").trim().toLowerCase()
+  const url = (resource.url || "").trim().toLowerCase()
+  if (title) titles.add(title)
+  if (url && url !== "#") urls.add(url)
+}
+
+/** Append incoming resources onto a base library, skipping id/url/title duplicates. */
+function mergeLibraries(base, incoming) {
+  const ids = new Set()
+  const urls = new Set()
+  const titles = new Set()
+  const merged = []
+  let skipped = 0
+
+  for (const resource of base) {
+    if (isDuplicate(resource, ids, urls, titles)) {
+      skipped += 1
+      continue
+    }
+    merged.push(resource)
+    remember(resource, ids, urls, titles)
+  }
+
+  let added = 0
+  for (const resource of incoming) {
+    if (isDuplicate(resource, ids, urls, titles)) {
+      skipped += 1
+      continue
+    }
+    merged.push(resource)
+    remember(resource, ids, urls, titles)
+    added += 1
+  }
+
+  return { resources: merged, added, skipped }
+}
+
 function loadResources() {
-  const cliSource = process.argv[2]
+  const args = process.argv.slice(2)
+  const mergeMode = args.includes("--merge")
+  const positional = args.filter((arg) => arg !== "--merge")
+  const cliSource = positional[0]
+
+  if (mergeMode) {
+    if (!fs.existsSync(publicJsonPath)) {
+      throw new Error(`--merge requires an existing ${publicJsonPath}`)
+    }
+    const base = parseJsonLibrary(fs.readFileSync(publicJsonPath, "utf8"))
+    const incomingPath = cliSource || driveXmlPath
+    console.log(`Merge mode: base ${publicJsonPath} (${base.length}) + ${incomingPath}`)
+    const { resources: incoming, source } = loadFromPath(incomingPath)
+    const { resources, added, skipped } = mergeLibraries(base, incoming)
+    console.log(`Incoming: ${incoming.length}; added: ${added}; skipped duplicates: ${skipped}`)
+    return { resources, source: `merge:${source}`, label: "merged" }
+  }
+
   if (cliSource) {
     console.log(`Reading CLI source ${cliSource}`)
-    return loadFromPath(cliSource)
+    const loaded = loadFromPath(cliSource)
+    return { ...loaded, label: path.basename(cliSource, path.extname(cliSource)) }
   }
 
   if (fs.existsSync(driveJsonPath)) {
     console.log(`Reading ${driveJsonPath}`)
-    return { resources: parseJsonLibrary(fs.readFileSync(driveJsonPath, "utf8")), source: "drive-json" }
+    return {
+      resources: parseJsonLibrary(fs.readFileSync(driveJsonPath, "utf8")),
+      source: "drive-json",
+      label: "json",
+    }
   }
 
   if (fs.existsSync(driveXmlPath)) {
     console.log(`Reading ${driveXmlPath} (XML fallback — prefer uxd-ai-resources.json going forward)`)
-    return { resources: parseXmlLibrary(fs.readFileSync(driveXmlPath, "utf8")), source: "drive-xml" }
+    return {
+      resources: parseXmlLibrary(fs.readFileSync(driveXmlPath, "utf8")),
+      source: "drive-xml",
+      label: "xml",
+    }
   }
 
   if (fs.existsSync(publicJsonPath)) {
     console.log(`Drive file missing; reading ${publicJsonPath}`)
-    return { resources: parseJsonLibrary(fs.readFileSync(publicJsonPath, "utf8")), source: "public-json" }
+    return {
+      resources: parseJsonLibrary(fs.readFileSync(publicJsonPath, "utf8")),
+      source: "public-json",
+      label: "json",
+    }
   }
 
   throw new Error(
@@ -188,9 +267,8 @@ function toPublicJson(resources) {
   )}\n`
 }
 
-const { resources, source } = loadResources()
-const cliLabel = process.argv[2] ? path.basename(process.argv[2], path.extname(process.argv[2])) : "json"
-const versionStamp = `${new Date().toISOString().slice(0, 10)}-${cliLabel}`
+const { resources, source, label } = loadResources()
+const versionStamp = `${new Date().toISOString().slice(0, 10)}-${label || "json"}`
 
 const ts = `import type { Resource, TagWithCount } from "./types"
 
