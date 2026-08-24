@@ -1,8 +1,26 @@
 {
-  "exportDate": "2026-08-24T19:12:37.055Z",
+  "exportDate": "2026-08-24T19:39:39.741Z",
   "course": "User Experience Design with AI",
-  "totalResources": 65,
+  "totalResources": 66,
   "resources": [
+    {
+      "id": "1787599000001-upenn-aiqr",
+      "title": "Artificial Intelligence and Qualitative Research",
+      "type": "link",
+      "url": "https://learninganalytics.upenn.edu/book/ai-qualitative-research.html",
+      "thumbnail": "https://learninganalytics.upenn.edu/book/book-cover-resampled-10pct.png",
+      "summary": "An open draft book by Ryan S. Baker and Amanda Barany on integrating artificial intelligence into qualitative research practice. Chapters cover foundational metaphors for AI in qualitative work, a full research workflow, collecting and selecting data, and emerging methods for coding, validation, and human–AI partnership—with new draft chapters released on a rolling basis.",
+      "tags": [
+        "Qualitative Methods",
+        "User Research",
+        "LLM",
+        "Methodology"
+      ],
+      "dateAdded": "2026-08-24",
+      "author": "Ryan S. Baker and Amanda Barany",
+      "year": 2026,
+      "pinned": true
+    },
     {
       "id": "1787598069356-zpdkw7prt",
       "title": "A Framework of User Experience Principles for Human-AI Agent Interaction in the Workplace",
@@ -682,7 +700,8 @@
       "dateAdded": "2026-02-05",
       "author": "Lawrence et al",
       "year": 2024,
-      "localPath": "https://drive.google.com/file/d/1pVW3BAJnahworo2kvt93_48iYcgyBEJg/view?usp=sharing"
+      "localPath": "https://drive.google.com/file/d/1pVW3BAJnahworo2kvt93_48iYcgyBEJg/view?usp=sharing",
+      "pinned": true
     },
     {
       "id": "1770169869598-4ob0rq04e",
@@ -733,7 +752,8 @@
       ],
       "dateAdded": "2026-02-03",
       "author": "Futurepedia",
-      "year": 2025
+      "year": 2025,
+      "pinned": true
     },
     {
       "id": "1770142087124-su7qw9jzf",

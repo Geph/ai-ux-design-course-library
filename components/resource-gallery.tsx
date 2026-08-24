@@ -8,9 +8,15 @@ interface ResourceGalleryProps {
   resources: Resource[]
   onTagClick: (tag: string) => void
   onEditClick: (resource: Resource) => void
+  onTogglePin?: (resource: Resource) => void
 }
 
-export function ResourceGallery({ resources, onTagClick, onEditClick }: ResourceGalleryProps) {
+export function ResourceGallery({
+  resources,
+  onTagClick,
+  onEditClick,
+  onTogglePin,
+}: ResourceGalleryProps) {
   if (resources.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -33,6 +39,7 @@ export function ResourceGallery({ resources, onTagClick, onEditClick }: Resource
           resource={resource} 
           onTagClick={onTagClick}
           onEditClick={onEditClick}
+          onTogglePin={onTogglePin}
         />
       ))}
     </div>

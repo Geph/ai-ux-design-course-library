@@ -12,6 +12,8 @@ export interface Resource {
   author?: string
   year?: number
   localPath?: string
+  /** When true, the resource stays at the top of the gallery. */
+  pinned?: boolean
 }
 
 export interface TagWithCount {

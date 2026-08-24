@@ -83,6 +83,7 @@ export function resourcesToJson(resources: Resource[]): string {
       ...(resource.author ? { author: resource.author } : {}),
       ...(resource.year !== undefined ? { year: resource.year } : {}),
       ...(resource.localPath ? { localPath: resource.localPath } : {}),
+      ...(resource.pinned ? { pinned: true } : {}),
     })),
   }
 
@@ -195,6 +196,7 @@ function normalizeEntry(entry: unknown, index: number, errors: string[]): Resour
     year,
     localPath:
       typeof raw.localPath === "string" && raw.localPath.trim() !== "" ? raw.localPath.trim() : undefined,
+    ...(raw.pinned === true ? { pinned: true as const } : {}),
   }
 }
 

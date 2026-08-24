@@ -97,6 +97,7 @@ function parseJsonLibrary(text) {
     author: entry.author ? String(entry.author) : undefined,
     year: entry.year !== undefined && entry.year !== "" ? Number(entry.year) : undefined,
     localPath: entry.localPath ? String(entry.localPath) : undefined,
+    pinned: entry.pinned === true ? true : undefined,
   }))
 }
 
@@ -235,6 +236,7 @@ function serializeResource(r) {
   if (r.author) lines.push(`    author: ${JSON.stringify(r.author)},`)
   if (r.year !== undefined && !Number.isNaN(r.year)) lines.push(`    year: ${r.year},`)
   if (r.localPath) lines.push(`    localPath: ${JSON.stringify(r.localPath)},`)
+  if (r.pinned) lines.push(`    pinned: true,`)
   lines.push("  }")
   return lines.join("\n")
 }
@@ -259,6 +261,7 @@ function toPublicJson(resources) {
         if (r.author) item.author = r.author
         if (r.year !== undefined && !Number.isNaN(r.year)) item.year = r.year
         if (r.localPath) item.localPath = r.localPath
+        if (r.pinned) item.pinned = true
         return item
       }),
     },
@@ -277,8 +280,8 @@ export const RESOURCES_DATA_VERSION = "${versionStamp}"
 
 export type { Resource, ResourceType, TagWithCount } from "./types"
 
-/** A tag only counts as popular once more than this many resources use it. */
-export const POPULAR_TAG_MIN_REFERENCES = 5
+/** Show the top N tags by usage as popular categories. */
+export const POPULAR_TAG_COUNT = 8
 
 export const resources: Resource[] = [
 ${resources.map(serializeResource).join(",\n")}
@@ -295,8 +298,8 @@ export function getPopularTags(items: Resource[]): TagWithCount[] {
 
   return Object.entries(tagCounts)
     .map(([tag, count]) => ({ tag, count }))
-    .filter(({ count }) => count > POPULAR_TAG_MIN_REFERENCES)
-    .sort((a, b) => b.count - a.count)
+    .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag))
+    .slice(0, POPULAR_TAG_COUNT)
 }
 
 export function getAllTags(items: Resource[]): TagWithCount[] {

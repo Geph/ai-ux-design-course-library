@@ -20,7 +20,10 @@ A comprehensive web-based resource library for organizing, searching, and managi
 - **Clear Filters**: One-click to reset all active filters
 
 ### Tags System
-- **Popular Tags**: The filter row shows only tags used by more than 5 resources, so it stays short as the library grows (see `POPULAR_TAG_MIN_REFERENCES` in `lib/resources-data.ts`)
+- **Popular Tags**: The filter row shows the top 8 tags by usage (`POPULAR_TAG_COUNT` in `lib/resources-data.ts`)
+- **Type & Tag Dropdowns**: Filter by content type (Papers, Videos, Links, Graphics) or any tag next to search
+- **Pinned Resources**: Pin items to keep them at the top of the gallery
+
 - **All Tags**: Every tag remains available from the "All Tags" list when adding or editing a resource
 - **Custom Tags**: Add your own tags when creating or editing resources
 - **Tag Suggestions**: Auto-suggested tags based on content analysis when adding URLs

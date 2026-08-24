@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react"
 import { Header } from "@/components/header"
 import { SearchBar } from "@/components/search-bar"
+import { FilterSelects } from "@/components/filter-selects"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { TagFilter } from "@/components/tag-filter"
 import { ResourceGallery } from "@/components/resource-gallery"
@@ -117,7 +118,7 @@ export default function ResourceLibrary() {
   const allTags = useMemo(() => getAllTags(resources), [resources])
 
   const filteredResources = useMemo(() => {
-    return resources.filter((resource) => {
+    const filtered = resources.filter((resource) => {
       const searchLower = searchQuery.toLowerCase()
       const matchesSearch =
         searchQuery === "" ||
@@ -132,12 +133,22 @@ export default function ResourceLibrary() {
 
       return matchesSearch && matchesType && matchesTags
     })
+
+    return [...filtered].sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)))
   }, [resources, searchQuery, selectedTags, selectedType])
 
   const handleTagToggle = (tag: string) => {
     setSelectedTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     )
+  }
+
+  const handleTagSelect = (tag: string | "all") => {
+    if (tag === "all") {
+      setSelectedTags([])
+      return
+    }
+    setSelectedTags([tag])
   }
 
   const clearAllFilters = () => {
@@ -178,6 +189,12 @@ export default function ResourceLibrary() {
     setResources((prev) => prev.filter((r) => r.id !== id))
   }
 
+  const handleTogglePin = (resource: Resource) => {
+    setResources((prev) =>
+      prev.map((r) => (r.id === resource.id ? { ...r, pinned: !r.pinned } : r))
+    )
+  }
+
   const hasActiveFilters =
     searchQuery !== "" || selectedTags.length > 0 || selectedType !== "all"
 
@@ -195,11 +212,18 @@ export default function ResourceLibrary() {
       />
 
       <section className="sticky top-0 z-40 bg-card border-b-2 border-border shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="mb-6 flex items-center justify-center gap-3">
-            <div className="flex-1 max-w-2xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+          <div className="mb-5 flex flex-wrap items-center justify-center gap-3">
+            <div className="w-full sm:w-auto sm:flex-1 sm:max-w-md">
               <SearchBar value={searchQuery} onChange={setSearchQuery} />
             </div>
+            <FilterSelects
+              selectedType={selectedType}
+              onTypeChange={setSelectedType}
+              selectedTags={selectedTags}
+              onTagChange={handleTagSelect}
+              tags={allTags}
+            />
             <SettingsDialog
               resources={resources}
               onImport={handleImport}
@@ -258,6 +282,7 @@ export default function ResourceLibrary() {
           resources={filteredResources}
           onTagClick={handleTagToggle}
           onEditClick={handleEditClick}
+          onTogglePin={handleTogglePin}
         />
       </main>
 
