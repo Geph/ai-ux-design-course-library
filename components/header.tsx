@@ -2,6 +2,8 @@
 
 import { AddResourceDialog } from "./add-resource-dialog"
 import type { Resource, TagWithCount } from "@/lib/resources-data"
+import { withBasePath } from "@/lib/base-path"
+import packageJson from "@/package.json"
 
 interface HeaderProps {
   resources: Resource[]
@@ -22,7 +24,7 @@ export function Header({
   allTags,
   appName = "User Experience Design with AI",
   appDescription = "Explore our curated collection of learning resources to master the intersection of UX design and artificial intelligence.",
-  appVersion = "v0.5.0"
+  appVersion = `v${packageJson.version}`
 }: HeaderProps) {
   return (
     <header className="relative overflow-hidden">
@@ -31,9 +33,9 @@ export function Header({
       <div 
         className="absolute inset-0 opacity-30"
         style={{
-          backgroundImage: `radial-gradient(circle at 20% 50%, oklch(0.55 0.22 250 / 0.1) 0%, transparent 50%),
-                           radial-gradient(circle at 80% 20%, oklch(0.70 0.20 330 / 0.1) 0%, transparent 40%),
-                           radial-gradient(circle at 40% 80%, oklch(0.70 0.15 180 / 0.1) 0%, transparent 40%)`
+          backgroundImage: `url(${withBasePath("/background.jpg")})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
         }}
       />
       

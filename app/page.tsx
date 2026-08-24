@@ -20,6 +20,7 @@ import { colorPalettes, applyPalette, PALETTE_STORAGE_KEY, THEME_STORAGE_KEY } f
 import { withBasePath } from "@/lib/base-path"
 import { SlidersHorizontal, X, ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import packageJson from "@/package.json"
 
 const STORAGE_KEY = "ux-ai-resources"
 const STORAGE_VERSION_KEY = "ux-ai-resources-version"
@@ -32,7 +33,7 @@ const DEFAULT_APP_DESCRIPTION =
 const FOOTER_TEXT =
   'A resource library for <a href="https://courses.illinois.edu/schedule/terms/INFO/490" target="_blank" rel="noopener noreferrer">Informatics 490: User Experience Design with AI</a>, a course at the University of Illinois at Urbana-Champaign'
 
-const APP_VERSION = "v0.5.0"
+const APP_VERSION = `v${packageJson.version}`
 
 export default function ResourceLibrary() {
   const [resources, setResources] = useState<Resource[]>(initialResources)
