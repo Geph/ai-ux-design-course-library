@@ -1,5 +1,5 @@
 import { withBasePath } from "./base-path"
-import { detectResourceType } from "./xml-utils"
+import { detectResourceType } from "./resource-utils"
 import type { ResourceType } from "./types"
 
 export interface ScrapeResult {

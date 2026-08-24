@@ -7,9 +7,10 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Settings, Download, Upload, Check, Sun, Moon, X, Trash2, FileJson, FilePlus2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { exportXmlFile, xmlToResources } from "@/lib/xml-utils"
 import {
   downloadTextFile,
+  exportJsonFile,
+  jsonToResources,
   parseResourcesJson,
   resourceTemplateJson,
   separateDuplicates,
@@ -118,16 +119,16 @@ export function SettingsDialog({
   }
 
   const handleExport = async () => {
-    await exportXmlFile(resources, `ux-ai-resources-${new Date().toISOString().split("T")[0]}.xml`)
+    await exportJsonFile(resources, `ux-ai-resources-${new Date().toISOString().split("T")[0]}.json`)
   }
 
   const handleSaveAsDefault = async () => {
-    if (!confirm("This will download resources.xml. Place it in /public/ (or replace the course default file) before rebuilding for deployment. Continue?")) {
+    if (!confirm("This will download resources.json. Place it in /public/ (or replace the course default file) before rebuilding for deployment. Continue?")) {
       return
     }
 
-    await exportXmlFile(resources, "resources.xml")
-    alert("resources.xml downloaded! Place it in /public/ and rebuild for cPanel deployment.")
+    await exportJsonFile(resources, "resources.json")
+    alert("resources.json downloaded! Place it in /public/ and rebuild for cPanel deployment.")
   }
 
   const handleImportClick = () => {
@@ -139,13 +140,12 @@ export function SettingsDialog({
     if (!file) return
 
     try {
-      const text = await file.text()
-      const importedResources = xmlToResources(text)
+      const importedResources = jsonToResources(await file.text())
       onImport(importedResources)
       alert(`Successfully imported ${importedResources.length} resources!`)
     } catch (err) {
-      console.error("Failed to import XML:", err)
-      alert("Failed to import XML file. Please check the format.")
+      console.error("Failed to import JSON:", err)
+      alert("Failed to import JSON file. Please check the format.")
     }
 
     if (fileInputRef.current) {
@@ -158,7 +158,7 @@ export function SettingsDialog({
   }
 
   /** Adds items from a JSON file to the library instead of replacing it. */
-  const handleJsonFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAddFromJsonChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -278,15 +278,15 @@ export function SettingsDialog({
 
           {/* Import/Export Section */}
           <div className="space-y-3 border-t pt-4">
-            <Label className="text-sm font-medium">Data Management</Label>
+            <Label className="text-sm font-medium">Library JSON</Label>
             <div className="flex gap-2">
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".xml"
+                accept=".json,application/json"
                 onChange={handleFileChange}
                 className="hidden"
-                aria-label="Import XML file"
+                aria-label="Import JSON library file"
               />
               <Button 
                 variant="outline" 
@@ -295,7 +295,7 @@ export function SettingsDialog({
                 className="flex-1 gap-2 bg-transparent"
               >
                 <Upload className="h-4 w-4" />
-                Import XML
+                Import Library
               </Button>
               <Button 
                 variant="outline" 
@@ -304,7 +304,7 @@ export function SettingsDialog({
                 className="flex-1 gap-2 bg-transparent"
               >
                 <Download className="h-4 w-4" />
-                Export XML
+                Export Library
               </Button>
             </div>
             <Button 
@@ -317,7 +317,7 @@ export function SettingsDialog({
               Save as Default Resources
             </Button>
             <p className="text-xs text-muted-foreground">
-              Import or export the whole library as XML. Save as default to use these resources when deployed.
+              Import replaces the whole library. Export downloads resources.json for backup or deployment.
             </p>
           </div>
 
@@ -329,7 +329,7 @@ export function SettingsDialog({
                 ref={jsonInputRef}
                 type="file"
                 accept=".json,application/json"
-                onChange={handleJsonFileChange}
+                onChange={handleAddFromJsonChange}
                 className="hidden"
                 aria-label="Add resources from JSON file"
               />

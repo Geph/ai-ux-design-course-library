@@ -15,7 +15,7 @@ import {
   getPopularTags,
   getAllTags,
 } from "@/lib/resources-data"
-import { xmlToResources, resourcesToXml } from "@/lib/xml-utils"
+import { jsonToResources, resourcesToJson } from "@/lib/json-utils"
 import { colorPalettes, applyPalette, PALETTE_STORAGE_KEY, THEME_STORAGE_KEY } from "@/lib/color-palettes"
 import { withBasePath } from "@/lib/base-path"
 import { SlidersHorizontal, X, ChevronDown, ChevronUp } from "lucide-react"
@@ -62,9 +62,12 @@ export default function ResourceLibrary() {
       const storedVersion = localStorage.getItem(STORAGE_VERSION_KEY)
       const stored = localStorage.getItem(STORAGE_KEY)
 
-      if (storedVersion === RESOURCES_DATA_VERSION && stored) {
+      // Skip legacy XML blobs left over from earlier versions.
+      const storedLooksLikeJson = stored?.trim().startsWith("{") || stored?.trim().startsWith("[")
+
+      if (storedVersion === RESOURCES_DATA_VERSION && stored && storedLooksLikeJson) {
         try {
-          const parsed = xmlToResources(stored)
+          const parsed = jsonToResources(stored)
           if (parsed.length > 0) {
             resourcesToUse = parsed
           }
@@ -72,18 +75,18 @@ export default function ResourceLibrary() {
           console.error("Failed to load stored resources:", err)
         }
       } else {
-        // Prefer bundled defaults (synced from uxd-ai-resources.xml), then optional public XML
+        // Prefer bundled defaults, then optional public JSON
         try {
-          const response = await fetch(withBasePath("/resources.xml"))
+          const response = await fetch(withBasePath("/resources.json"))
           if (response.ok) {
-            const xmlText = await response.text()
-            const parsed = xmlToResources(xmlText)
+            const jsonText = await response.text()
+            const parsed = jsonToResources(jsonText)
             if (parsed.length > 0) {
               resourcesToUse = parsed
             }
           }
         } catch (err) {
-          console.error("Failed to load resources.xml:", err)
+          console.error("Failed to load resources.json:", err)
         }
         localStorage.setItem(STORAGE_VERSION_KEY, RESOURCES_DATA_VERSION)
       }
@@ -106,8 +109,7 @@ export default function ResourceLibrary() {
   }, [])
 
   useEffect(() => {
-    const xml = resourcesToXml(resources)
-    localStorage.setItem(STORAGE_KEY, xml)
+    localStorage.setItem(STORAGE_KEY, resourcesToJson(resources))
     localStorage.setItem(STORAGE_VERSION_KEY, RESOURCES_DATA_VERSION)
   }, [resources])
 

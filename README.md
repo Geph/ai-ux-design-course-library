@@ -31,9 +31,9 @@ A comprehensive web-based resource library for organizing, searching, and managi
 - **Type-Aware**: Citations formatted appropriately for videos, PDFs, graphics, and web pages
 
 ### Data Management
-- **XML Storage**: All resources and tags are saved in XML format
-- **Export Library**: Download your entire library as `resources.xml`
-- **Import Library**: Upload an XML file to replace the current library
+- **JSON Storage**: All resources are saved in JSON format
+- **Export Library**: Download your entire library as `resources.json`
+- **Import Library**: Upload a JSON file to replace the current library
 - **JSON Template**: Download `resource-template.json`, fill in one entry per resource, and hand it to collaborators
 - **Add from JSON**: Import a JSON file of *additional* items; they are appended to the library and anything already present is skipped
 - **Persistent Storage**: Data automatically saved to browser localStorage
@@ -43,38 +43,30 @@ A comprehensive web-based resource library for organizing, searching, and managi
 - **Light/Dark Mode**: Toggle between light and dark themes
 - **Responsive Design**: Works on desktop, tablet, and mobile devices
 
-## XML File Format
+## JSON File Format
 
-Resources are stored in the following XML structure:
+Resources are stored in the following JSON structure:
 
-\`\`\`xml
-<?xml version="1.0" encoding="UTF-8"?>
-<resourceLibrary>
-  <metadata>
-    <exportDate>2026-01-26T00:00:00.000Z</exportDate>
-    <totalResources>10</totalResources>
-    <course>User Experience Design with AI</course>
-  </metadata>
-  <resources>
-    <resource>
-      <id>unique-id-123</id>
-      <title>Resource Title</title>
-      <type>pdf|video|link|graphic</type>
-      <url>https://example.com/resource</url>
-      <thumbnail>https://example.com/image.jpg</thumbnail>
-      <summary>Brief description of the resource</summary>
-      <dateAdded>2026-01-26</dateAdded>
-      <author>Author Name</author>
-      <duration>12:34</duration>
-      <pages>42</pages>
-      <localPath>/uploads/file.pdf</localPath>
-      <tags>
-        <tag>User research</tag>
-        <tag>Tutorial</tag>
-      </tags>
-    </resource>
-  </resources>
-</resourceLibrary>
+\`\`\`json
+{
+  "exportDate": "2026-01-26T00:00:00.000Z",
+  "course": "User Experience Design with AI",
+  "totalResources": 10,
+  "resources": [
+    {
+      "id": "unique-id-123",
+      "title": "Resource Title",
+      "type": "pdf",
+      "url": "https://example.com/resource",
+      "thumbnail": "https://example.com/image.jpg",
+      "summary": "Brief description of the resource",
+      "dateAdded": "2026-01-26",
+      "author": "Author Name",
+      "localPath": "/uploads/file.pdf",
+      "tags": ["User research", "Tutorial"]
+    }
+  ]
+}
 \`\`\`
 
 ## Getting Started
@@ -83,7 +75,7 @@ Resources are stored in the following XML structure:
 2. **Organize with Tags**: Add relevant tags from the popular list or create custom ones
 3. **Search & Filter**: Use the search bar and filter buttons to find specific resources
 4. **Generate Citations**: Click "Cite" on any resource card for an APA-formatted citation
-5. **Export Your Library**: Go to Settings (gear icon) to export your library as XML
+5. **Export Your Library**: Go to Settings (gear icon) to export your library as JSON
 
 ## Building and Deploying
 
@@ -143,10 +135,10 @@ npm run build
 
 Upload the contents of the `out/` directory to the cPanel folder that serves `https://invite.illinois.edu/uxd/`.
 
-Default resources are synced from `uxd-ai-resources.xml` into `lib/resources-data.ts` and `public/resources.xml`. To refresh them:
+Default resources are synced from the course Drive file (`uxd-ai-resources.json`, with XML fallback) into `lib/resources-data.ts` and `public/resources.json`. To refresh them:
 
 \`\`\`bash
-node scripts/parse-xml-resources.mjs
+npm run sync-resources
 \`\`\`
 
 ### URL Auto-Fill (metadata scraping)

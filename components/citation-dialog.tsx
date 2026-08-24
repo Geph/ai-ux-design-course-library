@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Copy, Check, Quote } from "lucide-react"
-import { generateApaCitation } from "@/lib/xml-utils"
+import { generateApaCitation } from "@/lib/resource-utils"
 import type { Resource } from "@/lib/resources-data"
 
 interface CitationDialogProps {

@@ -1,7 +1,7 @@
 import type { Resource, TagWithCount } from "./types"
 
-/** Default library resources synced from uxd-ai-resources.xml (Spring 2026). */
-export const RESOURCES_DATA_VERSION = "2026-05-04-uxd-ai"
+/** Default library resources synced from the course JSON (Spring 2026). */
+export const RESOURCES_DATA_VERSION = "2026-08-24-json"
 
 export type { Resource, ResourceType, TagWithCount } from "./types"
 

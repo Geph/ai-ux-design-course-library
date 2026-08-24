@@ -1,8 +1,16 @@
-import { detectResourceType, generateId } from "./xml-utils"
+import { detectResourceType, generateId } from "./resource-utils"
 import { extractYouTubeVideoId } from "./scrape-url"
 import type { Resource, ResourceType } from "./types"
 
 const RESOURCE_TYPES: ResourceType[] = ["pdf", "video", "link", "graphic"]
+const COURSE_NAME = "User Experience Design with AI"
+
+export interface ResourceLibraryJson {
+  exportDate: string
+  course: string
+  totalResources: number
+  resources: Resource[]
+}
 
 export interface ParsedJsonResources {
   resources: Resource[]
@@ -57,6 +65,30 @@ export function resourceTemplateJson(): string {
   return JSON.stringify(template, null, 2)
 }
 
+/** Serializes the full library for storage, export, and deployment. */
+export function resourcesToJson(resources: Resource[]): string {
+  const payload: ResourceLibraryJson = {
+    exportDate: new Date().toISOString(),
+    course: COURSE_NAME,
+    totalResources: resources.length,
+    resources: resources.map((resource) => ({
+      id: resource.id,
+      title: resource.title,
+      type: resource.type,
+      url: resource.url,
+      thumbnail: resource.thumbnail,
+      summary: resource.summary,
+      tags: resource.tags ?? [],
+      dateAdded: resource.dateAdded,
+      ...(resource.author ? { author: resource.author } : {}),
+      ...(resource.year !== undefined ? { year: resource.year } : {}),
+      ...(resource.localPath ? { localPath: resource.localPath } : {}),
+    })),
+  }
+
+  return `${JSON.stringify(payload, null, 2)}\n`
+}
+
 /** Triggers a browser download of a text file. */
 export function downloadTextFile(contents: string, filename: string, mimeType: string): void {
   const blob = new Blob([contents], { type: mimeType })
@@ -73,6 +105,22 @@ export function downloadTextFile(contents: string, filename: string, mimeType: s
     document.body.removeChild(anchor)
     URL.revokeObjectURL(url)
   }, 100)
+}
+
+/** Exports the full library as a JSON download. */
+export async function exportJsonFile(resources: Resource[], filename: string): Promise<void> {
+  if (!resources || resources.length === 0) {
+    alert("No resources to export")
+    return
+  }
+
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    downloadTextFile(resourcesToJson(resources), filename, "application/json;charset=utf-8")
+  } catch (error) {
+    console.error("Export failed:", error)
+    alert("Failed to export resources")
+  }
 }
 
 function titleCaseTag(tag: string): string {
@@ -129,9 +177,10 @@ function normalizeEntry(entry: unknown, index: number, errors: string[]): Resour
       ? Math.trunc(yearValue)
       : undefined
 
-  const thumbnail = typeof raw.thumbnail === "string" && raw.thumbnail.trim() !== ""
-    ? raw.thumbnail.trim()
-    : defaultThumbnail(type, url)
+  const thumbnail =
+    typeof raw.thumbnail === "string" && raw.thumbnail.trim() !== ""
+      ? raw.thumbnail.trim()
+      : defaultThumbnail(type, url)
 
   return {
     id: typeof raw.id === "string" && raw.id.trim() !== "" ? raw.id.trim() : generateId(),
@@ -144,12 +193,14 @@ function normalizeEntry(entry: unknown, index: number, errors: string[]): Resour
     dateAdded: typeof raw.dateAdded === "string" && raw.dateAdded.trim() !== "" ? raw.dateAdded.trim() : today(),
     author: typeof raw.author === "string" && raw.author.trim() !== "" ? raw.author.trim().slice(0, 160) : undefined,
     year,
+    localPath:
+      typeof raw.localPath === "string" && raw.localPath.trim() !== "" ? raw.localPath.trim() : undefined,
   }
 }
 
 /**
- * Reads a JSON file of resources to add. Accepts either a bare array or an
- * object with a "resources" array (the shape produced by the template).
+ * Reads a JSON library or additive template. Accepts either a bare array or an
+ * object with a "resources" array.
  */
 export function parseResourcesJson(text: string): ParsedJsonResources {
   const errors: string[] = []
@@ -180,6 +231,15 @@ export function parseResourcesJson(text: string): ParsedJsonResources {
   })
 
   return { resources, errors }
+}
+
+/** Parses a full library JSON string; throws if nothing usable is found. */
+export function jsonToResources(text: string): Resource[] {
+  const { resources, errors } = parseResourcesJson(text)
+  if (resources.length === 0) {
+    throw new Error(errors[0] || "No resources found in JSON")
+  }
+  return resources
 }
 
 /** Splits incoming resources into genuinely new items and duplicates. */

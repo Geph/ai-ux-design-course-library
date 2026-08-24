@@ -9,7 +9,7 @@
     "predev": "node scripts/copy-pdf-worker.mjs",
     "prebuild": "node scripts/copy-pdf-worker.mjs",
     "start": "next start",
-    "sync-resources": "node scripts/parse-xml-resources.mjs",
+    "sync-resources": "node scripts/sync-resources.mjs",
     "bump:patch": "node scripts/bump-version.mjs"
   },
   "dependencies": {
