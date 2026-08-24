@@ -139,6 +139,8 @@ Default resources are synced from the course Drive file (`uxd-ai-resources.json`
 
 \`\`\`bash
 npm run sync-resources
+# or from a specific file:
+node scripts/sync-resources.mjs path/to/resources.json
 \`\`\`
 
 ### URL Auto-Fill (metadata scraping)

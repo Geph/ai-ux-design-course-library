@@ -100,7 +100,29 @@ function parseJsonLibrary(text) {
   }))
 }
 
+function loadFromPath(filePath) {
+  const absolute = path.resolve(root, filePath)
+  if (!fs.existsSync(absolute)) {
+    throw new Error(`Source file not found: ${absolute}`)
+  }
+  const text = fs.readFileSync(absolute, "utf8")
+  const lower = absolute.toLowerCase()
+  if (lower.endsWith(".json")) {
+    return { resources: parseJsonLibrary(text), source: absolute }
+  }
+  if (lower.endsWith(".xml")) {
+    return { resources: parseXmlLibrary(text), source: absolute }
+  }
+  throw new Error(`Unsupported source type (use .json or .xml): ${absolute}`)
+}
+
 function loadResources() {
+  const cliSource = process.argv[2]
+  if (cliSource) {
+    console.log(`Reading CLI source ${cliSource}`)
+    return loadFromPath(cliSource)
+  }
+
   if (fs.existsSync(driveJsonPath)) {
     console.log(`Reading ${driveJsonPath}`)
     return { resources: parseJsonLibrary(fs.readFileSync(driveJsonPath, "utf8")), source: "drive-json" }
@@ -117,7 +139,7 @@ function loadResources() {
   }
 
   throw new Error(
-    "No resource source found. Expected Drive uxd-ai-resources.json (or .xml), or public/resources.json."
+    "No resource source found. Pass a path, or provide Drive uxd-ai-resources.json (or .xml), or public/resources.json."
   )
 }
 
@@ -167,12 +189,13 @@ function toPublicJson(resources) {
 }
 
 const { resources, source } = loadResources()
-const versionStamp = new Date().toISOString().slice(0, 10)
+const cliLabel = process.argv[2] ? path.basename(process.argv[2], path.extname(process.argv[2])) : "json"
+const versionStamp = `${new Date().toISOString().slice(0, 10)}-${cliLabel}`
 
 const ts = `import type { Resource, TagWithCount } from "./types"
 
-/** Default library resources synced from the course JSON (Spring 2026). */
-export const RESOURCES_DATA_VERSION = "${versionStamp}-json"
+/** Default library resources synced from the course JSON. */
+export const RESOURCES_DATA_VERSION = "${versionStamp}"
 
 export type { Resource, ResourceType, TagWithCount } from "./types"
 
@@ -213,16 +236,17 @@ export function getAllTags(items: Resource[]): TagWithCount[] {
 }
 `
 
+const publicJson = toPublicJson(resources)
 fs.writeFileSync(dataTsPath, ts)
-fs.writeFileSync(publicJsonPath, toPublicJson(resources))
+fs.writeFileSync(publicJsonPath, publicJson)
 
-// Keep a Drive JSON copy in sync when we read from XML so future syncs are JSON-native.
-if (source === "drive-xml" && fs.existsSync(driveDir)) {
+// Keep the course Drive JSON current whenever we can write it.
+if (fs.existsSync(driveDir)) {
   try {
-    fs.writeFileSync(driveJsonPath, toPublicJson(resources))
-    console.log(`Wrote Drive JSON companion: ${driveJsonPath}`)
+    fs.writeFileSync(driveJsonPath, publicJson)
+    console.log(`Wrote Drive JSON: ${driveJsonPath}`)
   } catch (err) {
-    console.warn(`Could not write Drive JSON companion: ${err.message}`)
+    console.warn(`Could not write Drive JSON: ${err.message}`)
   }
 }
 
