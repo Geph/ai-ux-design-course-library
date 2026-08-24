@@ -11,7 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Save, Trash2, FileText, Video, Globe, X, Plus, ImageIcon, Camera, Loader2, Upload } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { Resource, ResourceType } from "@/lib/resources-data"
+import { scrapeUrlMetadata } from "@/lib/scrape-url"
+import { withBasePath } from "@/lib/base-path"
+import type { Resource, ResourceType, TagWithCount } from "@/lib/resources-data"
 
 interface EditResourceDialogProps {
   resource: Resource | null
@@ -19,8 +21,8 @@ interface EditResourceDialogProps {
   onOpenChange: (open: boolean) => void
   onSave: (resource: Resource) => void
   onDelete: (id: string) => void
-  popularTags: string[]
-  allTags: string[]
+  popularTags: TagWithCount[]
+  allTags: TagWithCount[]
 }
 
 export function EditResourceDialog({ 
@@ -121,22 +123,22 @@ export function EditResourceDialog({
     }
   }
 
+  /** Refreshes the thumbnail and fills in any fields still blank. */
   const scrapeUrl = async (urlToScrape: string) => {
+    if (!urlToScrape) return
+
     setIsGeneratingThumbnail(true)
-    
+
     try {
-      const response = await fetch("/api/scrape", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: urlToScrape }),
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        if (data.thumbnail) setThumbnail(data.thumbnail)
-      }
+      const data = await scrapeUrlMetadata(urlToScrape)
+
+      if (data.thumbnail) setThumbnail(data.thumbnail)
+      if (data.title) setTitle((previous) => previous.trim() || data.title)
+      if (data.author) setAuthor((previous) => previous.trim() || data.author)
+      if (data.summary) setSummary((previous) => previous.trim() || data.summary)
+      if (data.year) setYear((previous) => previous.trim() || String(data.year))
     } catch (error) {
-      console.error("Failed to scrape thumbnail:", error)
+      console.error("Failed to fetch metadata:", error)
     } finally {
       setIsGeneratingThumbnail(false)
     }
@@ -438,7 +440,7 @@ export function EditResourceDialog({
                 onChange={handleThumbnailUpload}
                 className="hidden"
               />
-              {url && type !== 'video' && !url.startsWith('blob:') && !url.startsWith('data:') && (
+              {url && /^https?:\/\//i.test(url) && (
                 <Button
                   type="button"
                   variant="outline"
@@ -455,7 +457,7 @@ export function EditResourceDialog({
                   ) : (
                     <>
                       <Camera className="h-3 w-3 mr-1" />
-                      Fetch Thumbnail
+                      Fetch Metadata
                     </>
                   )}
                 </Button>
@@ -487,7 +489,7 @@ export function EditResourceDialog({
             </div>
             {thumbnail && (
               <div className="mt-2 border rounded-lg overflow-hidden">
-                <img src={thumbnail} alt="Thumbnail preview" className="w-full h-32 object-cover" />
+                <img src={withBasePath(thumbnail)} alt="Thumbnail preview" className="w-full h-32 object-cover" />
               </div>
             )}
           </div>

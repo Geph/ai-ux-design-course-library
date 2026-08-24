@@ -20,7 +20,8 @@ A comprehensive web-based resource library for organizing, searching, and managi
 - **Clear Filters**: One-click to reset all active filters
 
 ### Tags System
-- **Popular Tags**: Pre-configured tags for the course including User research, Prototyping, Vibe Coding, Ethics, UXD and AI, Productivity Tools, Claude, ChatGPT, Gemini, Midjourney, Figma, and more
+- **Popular Tags**: The filter row shows only tags used by more than 5 resources, so it stays short as the library grows (see `POPULAR_TAG_MIN_REFERENCES` in `lib/resources-data.ts`)
+- **All Tags**: Every tag remains available from the "All Tags" list when adding or editing a resource
 - **Custom Tags**: Add your own tags when creating or editing resources
 - **Tag Suggestions**: Auto-suggested tags based on content analysis when adding URLs
 
@@ -32,7 +33,9 @@ A comprehensive web-based resource library for organizing, searching, and managi
 ### Data Management
 - **XML Storage**: All resources and tags are saved in XML format
 - **Export Library**: Download your entire library as `resources.xml`
-- **Import Library**: Upload an XML file to restore or share your library
+- **Import Library**: Upload an XML file to replace the current library
+- **JSON Template**: Download `resource-template.json`, fill in one entry per resource, and hand it to collaborators
+- **Add from JSON**: Import a JSON file of *additional* items; they are appended to the library and anything already present is skipped
 - **Persistent Storage**: Data automatically saved to browser localStorage
 
 ### Customization
@@ -119,52 +122,68 @@ npm run build
 # or `out` folder (for static export)
 \`\`\`
 
-### Static Export (for hosting on any web server)
+### Static Export (cPanel / invite.illinois.edu)
 
-To deploy to a subdirectory on your own website, add this to `next.config.mjs`:
+This project is configured for static hosting under `/uxd`:
 
 \`\`\`js
-const nextConfig = {
+// next.config.mjs
+{
   output: 'export',
-  basePath: '/your-subdirectory', // e.g., '/knowledge-library'
+  basePath: '/uxd',
   trailingSlash: true,
 }
-
-export default nextConfig
 \`\`\`
 
-Then build and export:
+Build and upload:
 
 \`\`\`bash
 npm run build
 \`\`\`
 
-The static files will be in the `out` directory. Upload the contents of `out` to your web server's directory.
+Upload the contents of the `out/` directory to the cPanel folder that serves `https://invite.illinois.edu/uxd/`.
 
-### Deploying to Vercel
+Default resources are synced from `uxd-ai-resources.xml` into `lib/resources-data.ts` and `public/resources.xml`. To refresh them:
 
-The easiest way to deploy is using Vercel:
+\`\`\`bash
+node scripts/parse-xml-resources.mjs
+\`\`\`
 
-1. Push your code to GitHub
-2. Import the repository at [vercel.com/new](https://vercel.com/new)
-3. Vercel will automatically detect Next.js and deploy
+### URL Auto-Fill (metadata scraping)
+
+A static export has no server routes, and browsers block direct cross-origin page
+requests, so metadata lookup uses `public/scrape.php`, which is copied to
+`out/scrape.php` on build and runs on cPanel's PHP.
+
+After uploading, confirm it works by opening:
+
+\`\`\`
+https://invite.illinois.edu/uxd/scrape.php?url=https://www.nngroup.com/articles/synthetic-users/
+\`\`\`
+
+A JSON response with `title`, `author`, `summary`, `thumbnail`, and `year` means
+auto-fill is fully functional (including YouTube descriptions and upload years).
+
+If PHP is unavailable, the app automatically falls back to CORS-enabled services
+(noembed for YouTube/Vimeo, microlink and r.jina.ai for pages), which cover
+titles, authors, images, and publication years but not YouTube descriptions.
 
 ### Deploying to Other Platforms
 
 **Netlify:**
 \`\`\`bash
 npm run build
-# Upload the `out` folder to Netlify (after enabling static export)
+# Upload the `out` folder to Netlify
 \`\`\`
 
 **Apache/Nginx (Self-hosted):**
-1. Enable static export in `next.config.mjs` as shown above
+1. Confirm `basePath` in `next.config.mjs` matches your subdirectory
 2. Run `npm run build`
 3. Copy the contents of the `out` folder to your web server's public directory
 4. Ensure your server is configured to serve `index.html` for all routes
 
 **GitHub Pages:**
-1. Enable static export with `basePath: '/<repo-name>'`
+1. Set `basePath` to `'/<repo-name>'`
 2. Build and push the `out` folder to the `gh-pages` branch
 
 ## Technology Stack

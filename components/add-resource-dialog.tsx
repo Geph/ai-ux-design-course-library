@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { ImageIcon } from "lucide-react"
 
 import React from "react"
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,14 +14,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Upload, Link as LinkIcon, FileText, Video, Globe, X, AlertCircle, Loader2, Sparkles, Camera } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { detectResourceType, generateId } from "@/lib/xml-utils"
-import type { Resource, ResourceType } from "@/lib/resources-data"
+import { scrapeUrlMetadata } from "@/lib/scrape-url"
+import { withBasePath } from "@/lib/base-path"
+import type { Resource, ResourceType, TagWithCount } from "@/lib/resources-data"
 
 const MAX_FILE_SIZE = 30 * 1024 * 1024 // 30MB in bytes
 
 interface AddResourceDialogProps {
   onAddResource: (resource: Resource) => void
-  popularTags: string[]
-  allTags: string[]
+  popularTags: TagWithCount[]
+  allTags: TagWithCount[]
   existingResources?: Resource[]
 }
 
@@ -43,8 +45,10 @@ export function AddResourceDialog({ onAddResource, popularTags, allTags, existin
   const [fileError, setFileError] = useState<string | null>(null)
   const [isScrapingUrl, setIsScrapingUrl] = useState(false)
   const [scrapedSuccessfully, setScrapedSuccessfully] = useState(false)
+  const [scrapeFailed, setScrapeFailed] = useState(false)
   const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false)
   const [duplicateWarning, setDuplicateWarning] = useState<Resource | null>(null)
+  const lastScrapedUrl = useRef<string | null>(null)
 
   const resetForm = () => {
     setUrl("")
@@ -61,9 +65,11 @@ export function AddResourceDialog({ onAddResource, popularTags, allTags, existin
     setFileError(null)
     setIsScrapingUrl(false)
     setScrapedSuccessfully(false)
+    setScrapeFailed(false)
     setIsGeneratingThumbnail(false)
     setDuplicateWarning(null)
     setShowAllTags(false)
+    lastScrapedUrl.current = null
   }
 
   const checkForDuplicates = (checkTitle: string, checkUrl: string): Resource | null => {
@@ -116,48 +122,44 @@ export function AddResourceDialog({ onAddResource, popularTags, allTags, existin
     }
   }
 
-  const scrapeUrl = async (urlToScrape: string) => {
+  /** `force` (manual refresh) overwrites existing values; auto-runs only fill blanks. */
+  const scrapeUrl = async (urlToScrape: string, force = false) => {
     if (!urlToScrape) return
-    
+
+    lastScrapedUrl.current = urlToScrape
     setIsScrapingUrl(true)
     setScrapedSuccessfully(false)
-    
+    setScrapeFailed(false)
+
     try {
-      const response = await fetch("/api/scrape", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: urlToScrape }),
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        
-        if (data.title) setTitle(data.title)
-        if (data.author) setAuthor(data.author)
-        if (data.summary) setSummary(data.summary)
-        if (data.thumbnail) setThumbnail(data.thumbnail)
-        if (data.suggestedTags && data.suggestedTags.length > 0) {
-          setTags((prevTags) => {
-            const newTags = [...prevTags]
-            for (const tag of data.suggestedTags) {
-              const formatted = formatTag(tag)
-              if (!newTags.includes(formatted)) {
-                newTags.push(formatted)
-              }
+      const data = await scrapeUrlMetadata(urlToScrape)
+      const fill = (value: string) => (previous: string) =>
+        force || !previous.trim() ? value : previous
+
+      if (data.title) setTitle(fill(data.title))
+      if (data.author) setAuthor(fill(data.author))
+      if (data.summary) setSummary(fill(data.summary))
+      if (data.thumbnail) setThumbnail(fill(data.thumbnail))
+      if (data.year) setYear(fill(data.year.toString()))
+      if (data.type) setDetectedType(data.type)
+
+      if (data.suggestedTags.length > 0) {
+        setTags((prevTags) => {
+          const newTags = [...prevTags]
+          for (const tag of data.suggestedTags) {
+            const formatted = formatTag(tag)
+            if (!newTags.includes(formatted)) {
+              newTags.push(formatted)
             }
-            return newTags
-          })
-        }
-        if (data.type) {
-          setDetectedType(data.type)
-        }
-        if (data.year) {
-          setYear(data.year.toString())
-        }
-        setScrapedSuccessfully(true)
+          }
+          return newTags
+        })
       }
-    } catch (error) {
-      // Silently fail - some sites block scraping, user can fill in manually
+
+      setScrapedSuccessfully(data.found)
+      setScrapeFailed(!data.found)
+    } catch {
+      setScrapeFailed(true)
     } finally {
       setIsScrapingUrl(false)
     }
@@ -168,6 +170,7 @@ export function AddResourceDialog({ onAddResource, popularTags, allTags, existin
     setUploadedFile(null)
     setFileError(null)
     setScrapedSuccessfully(false)
+    setScrapeFailed(false)
     if (value) {
       const type = detectResourceType(value)
       setDetectedType(type)
@@ -175,9 +178,24 @@ export function AddResourceDialog({ onAddResource, popularTags, allTags, existin
     }
   }
 
+  // Auto-fetch shortly after a complete URL is typed or pasted.
+  useEffect(() => {
+    if (uploadedFile) return
+    const candidate = url.trim()
+    if (!/^https?:\/\/[^\s.]+\.[^\s]{2,}/i.test(candidate)) return
+    if (lastScrapedUrl.current === candidate) return
+
+    const timer = setTimeout(() => {
+      scrapeUrl(candidate)
+    }, 800)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url, uploadedFile])
+
   const handleUrlBlur = () => {
-    if (url && !isScrapingUrl && !scrapedSuccessfully) {
-      scrapeUrl(url)
+    const candidate = url.trim()
+    if (candidate && !isScrapingUrl && lastScrapedUrl.current !== candidate) {
+      scrapeUrl(candidate)
     }
   }
 
@@ -200,7 +218,7 @@ export function AddResourceDialog({ onAddResource, popularTags, allTags, existin
       // For uploaded PDFs, generate thumbnail from first page
       else if (uploadedFile && uploadedFile.type === 'application/pdf') {
         const pdfjsLib = await import('pdfjs-dist')
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+        pdfjsLib.GlobalWorkerOptions.workerSrc = withBasePath('/pdf.worker.min.mjs')
         
         const arrayBuffer = await uploadedFile.arrayBuffer()
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
@@ -215,8 +233,9 @@ export function AddResourceDialog({ onAddResource, popularTags, allTags, existin
           canvas.width = viewport.width
           
           await page.render({
+            canvas,
             canvasContext: context,
-            viewport: viewport
+            viewport,
           }).promise
           
           const thumbnailDataUrl = canvas.toDataURL('image/jpeg', 0.8)
@@ -589,7 +608,7 @@ export function AddResourceDialog({ onAddResource, popularTags, allTags, existin
                     type="button"
                     variant="outline"
                     size="icon"
-                    onClick={() => scrapeUrl(url)}
+                    onClick={() => scrapeUrl(url, true)}
                     disabled={isScrapingUrl}
                     className="bg-transparent shrink-0"
                     title="Auto-fetch metadata"
@@ -612,6 +631,12 @@ export function AddResourceDialog({ onAddResource, popularTags, allTags, existin
                 <p className="text-xs text-primary flex items-center gap-1.5">
                   <Sparkles className="h-3 w-3" />
                   Metadata auto-filled from URL
+                </p>
+              )}
+              {scrapeFailed && !isScrapingUrl && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <AlertCircle className="h-3 w-3" />
+                  This site blocked automatic lookup — please fill in the details below.
                 </p>
               )}
               {url && (
@@ -856,7 +881,7 @@ export function AddResourceDialog({ onAddResource, popularTags, allTags, existin
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => scrapeUrl(url)}
+                  onClick={() => scrapeUrl(url, true)}
                   disabled={isScrapingUrl}
                   className="bg-transparent"
                 >
@@ -900,7 +925,7 @@ export function AddResourceDialog({ onAddResource, popularTags, allTags, existin
             </div>
             {thumbnail && (
               <div className="mt-2 border rounded-lg overflow-hidden">
-                <img src={thumbnail} alt="Thumbnail preview" className="w-full h-32 object-cover" />
+                <img src={withBasePath(thumbnail)} alt="Thumbnail preview" className="w-full h-32 object-cover" />
               </div>
             )}
           </div>
@@ -944,7 +969,7 @@ export function AddResourceDialog({ onAddResource, popularTags, allTags, existin
               </div>
 
               <p className="text-sm text-muted-foreground">
-                Do you want to add this anyway? The ratings from both resources will be combined.
+                Do you want to add it anyway? You will end up with two copies in the library.
               </p>
 
               <div className="flex gap-3 pt-2">

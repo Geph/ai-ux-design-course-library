@@ -1,4 +1,4 @@
-import type { Resource, ResourceType } from "./resources-data"
+import type { Resource, ResourceType } from "./types"
 
 /**
  * Detects the resource type based on URL
@@ -19,8 +19,8 @@ export function detectResourceType(url: string): ResourceType {
     return "video"
   }
   
-  // Check for PDF files
-  if (lowerUrl.endsWith(".pdf")) {
+  // Check for PDF files (including URLs with query strings)
+  if (lowerUrl.endsWith(".pdf") || /\.pdf(\?|#)/.test(lowerUrl) || lowerUrl.includes("arxiv.org/pdf")) {
     return "pdf"
   }
   
@@ -143,18 +143,6 @@ export function resourcesToXml(resources: Resource[]): string {
       xml += `    <localPath>${escapeXml(resource.localPath)}</localPath>\n`
     }
     
-    if (resource.ratingSum !== undefined) {
-      xml += `    <ratingSum>${resource.ratingSum}</ratingSum>\n`
-    }
-    
-    if (resource.ratingCount !== undefined) {
-      xml += `    <ratingCount>${resource.ratingCount}</ratingCount>\n`
-    }
-    
-    if (resource.userRating !== undefined) {
-      xml += `    <userRating>${resource.userRating}</userRating>\n`
-    }
-    
     if (resource.tags && resource.tags.length > 0) {
       xml += '    <tags>\n'
       resource.tags.forEach((tag) => {
@@ -215,9 +203,6 @@ export function xmlToResources(xmlString: string): Resource[] {
       author: getTextContent("author") || undefined,
       year: getNumberContent("year"),
       localPath: getTextContent("localPath") || undefined,
-      ratingSum: getNumberContent("ratingSum"),
-      ratingCount: getNumberContent("ratingCount"),
-      userRating: getNumberContent("userRating"),
     }
     
     resources.push(resource)

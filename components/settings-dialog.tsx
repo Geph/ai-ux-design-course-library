@@ -5,9 +5,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Settings, Download, Upload, Check, Sun, Moon, X, Trash2 } from "lucide-react"
+import { Settings, Download, Upload, Check, Sun, Moon, X, Trash2, FileJson, FilePlus2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { exportXmlFile, xmlToResources } from "@/lib/xml-utils"
+import {
+  downloadTextFile,
+  parseResourcesJson,
+  resourceTemplateJson,
+  separateDuplicates,
+} from "@/lib/json-utils"
 import { colorPalettes, applyPalette, PALETTE_STORAGE_KEY, THEME_STORAGE_KEY, type ColorPalette } from "@/lib/color-palettes"
 import type { Resource } from "@/lib/resources-data"
 import { Badge } from "@/components/ui/badge"
@@ -19,6 +25,7 @@ const APP_DESCRIPTION_STORAGE_KEY = "ux-ai-app-description"
 interface SettingsDialogProps {
   resources: Resource[]
   onImport: (resources: Resource[]) => void
+  onAddResources?: (resources: Resource[]) => void
   onDeleteAllResources?: () => void
   onAppNameChange?: (name: string) => void
   onAppDescriptionChange?: (description: string) => void
@@ -29,6 +36,7 @@ interface SettingsDialogProps {
 export function SettingsDialog({ 
   resources, 
   onImport,
+  onAddResources,
   onDeleteAllResources,
   onAppNameChange,
   onAppDescriptionChange,
@@ -43,6 +51,7 @@ export function SettingsDialog({
   const [appName, setAppName] = useState(currentAppName)
   const [appDescription, setAppDescription] = useState(currentAppDescription)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const jsonInputRef = useRef<HTMLInputElement>(null)
 
   // Load saved preferences on mount
   useEffect(() => {
@@ -113,13 +122,12 @@ export function SettingsDialog({
   }
 
   const handleSaveAsDefault = async () => {
-    if (!confirm("This will download resources.xml which you should place in /public/out/ for deployment. Continue?")) {
+    if (!confirm("This will download resources.xml. Place it in /public/ (or replace the course default file) before rebuilding for deployment. Continue?")) {
       return
     }
 
-    // Generate XML and download client-side (no API needed)
     await exportXmlFile(resources, "resources.xml")
-    alert("resources.xml downloaded! Place it in /public/out/ folder for deployment.")
+    alert("resources.xml downloaded! Place it in /public/ and rebuild for cPanel deployment.")
   }
 
   const handleImportClick = () => {
@@ -142,6 +150,50 @@ export function SettingsDialog({
 
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
+    }
+  }
+
+  const handleDownloadJsonTemplate = () => {
+    downloadTextFile(resourceTemplateJson(), "resource-template.json", "application/json;charset=utf-8")
+  }
+
+  /** Adds items from a JSON file to the library instead of replacing it. */
+  const handleJsonFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      const { resources: parsed, errors } = parseResourcesJson(await file.text())
+
+      if (parsed.length === 0) {
+        alert(
+          errors.length > 0
+            ? `No resources could be added:\n\n${errors.join("\n")}`
+            : "No resources were found in that file."
+        )
+        return
+      }
+
+      const { additions, duplicates } = separateDuplicates(parsed, resources)
+      if (additions.length > 0) {
+        onAddResources?.(additions)
+      }
+
+      const lines = [`Added ${additions.length} resource${additions.length === 1 ? "" : "s"}.`]
+      if (duplicates.length > 0) {
+        lines.push(`Skipped ${duplicates.length} already in the library.`)
+      }
+      if (errors.length > 0) {
+        lines.push("", "Warnings:", ...errors)
+      }
+      alert(lines.join("\n"))
+    } catch (err) {
+      console.error("Failed to import JSON:", err)
+      alert("Failed to read that JSON file. Please check the format.")
+    }
+
+    if (jsonInputRef.current) {
+      jsonInputRef.current.value = ""
     }
   }
 
@@ -265,7 +317,44 @@ export function SettingsDialog({
               Save as Default Resources
             </Button>
             <p className="text-xs text-muted-foreground">
-              Import or export your resource library. Save as default to use these resources when deployed.
+              Import or export the whole library as XML. Save as default to use these resources when deployed.
+            </p>
+          </div>
+
+          {/* Add individual items via JSON */}
+          <div className="space-y-3 border-t pt-4">
+            <Label className="text-sm font-medium">Add Items from JSON</Label>
+            <div className="flex gap-2">
+              <input
+                ref={jsonInputRef}
+                type="file"
+                accept=".json,application/json"
+                onChange={handleJsonFileChange}
+                className="hidden"
+                aria-label="Add resources from JSON file"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadJsonTemplate}
+                className="flex-1 gap-2 bg-transparent"
+              >
+                <FileJson className="h-4 w-4" />
+                JSON Template
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => jsonInputRef.current?.click()}
+                className="flex-1 gap-2 bg-transparent"
+              >
+                <FilePlus2 className="h-4 w-4" />
+                Add from JSON
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Download the template, fill in one entry per resource, then add them to the
+              current library. Items already in the library are skipped.
             </p>
           </div>
 

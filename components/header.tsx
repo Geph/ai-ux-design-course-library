@@ -1,8 +1,6 @@
 "use client"
 
-import { BookOpen } from "lucide-react"
 import { AddResourceDialog } from "./add-resource-dialog"
-import { SettingsDialog } from "./settings-dialog"
 import type { Resource, TagWithCount } from "@/lib/resources-data"
 
 interface HeaderProps {
@@ -24,7 +22,7 @@ export function Header({
   allTags,
   appName = "User Experience Design with AI",
   appDescription = "Explore our curated collection of learning resources to master the intersection of UX design and artificial intelligence.",
-  appVersion = "v0.3.0"
+  appVersion = "v0.5.0"
 }: HeaderProps) {
   return (
     <header className="relative overflow-hidden">
